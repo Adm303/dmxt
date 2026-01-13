@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机名字抽奖系统（无重复）</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin: 50px;
+            background-color: #f4f7f9;
+            color: #333;
+        }
+        h1 {
+            color: #4a90e2;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            color: #555;
+        }
+        #display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #e94e77;
+            margin: 50px 0;
+            height: 60px;
+            line-height: 60px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 300px;
+            margin: 0 auto 30px;
+            transition: color 0.3s;
+        }
+        button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #357abd;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 30px;
+            font-size: 28px;
+            color: #28a745;
+            font-weight: bold;
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>随机名字抽奖系统（无重复）</h1>
+    <p>点击开始，名字会快速随机切换，然后逐渐慢下来停在幸运儿上。抽中后移除，不会重复。</p>
+    <button id="startButton" onclick="startLottery()">开始抽奖</button>
+    <button id="resetButton" onclick="resetLottery()">重置</button>
+    <div id="display">准备中...</div>
+    <div id="result"></div>
+
+    <script>
+        let isRunning = false;
+        const builtinNames = [
+            '欧诺焰', '王仙华', '黄宗毅', '陈治妍', '谢沛业', '陈家涛', '陈学成', '林宗泽', '江赞洋', '梁一芯',
+            '黄欣儿', '余应峻', '黎敏玲', '陈家俊', '邵泽滔', '钟有扬', '朱洛轩', '董李宗', '蓝海平',
+            '陈钰婧', '欧心怡', '李方晋', '霍颖怡', '梁宏', '陈俊安', '欧洁鸿', '陈翠婵', '谭皓天', '周煜轩',
+            '李祖源', '张子寅', '董晓', '许芷豪', '程学倪', '张子晴', '刘颖仪', '苏现', '曾庆航',
+            '曾明轩', '江沩健', '张俊然', '陈维渝', '陈家熙',  '龙惠敏', '陈勇达', '曾幸文', '雷智宇',
+            '陈国伦', '陈鸿玮', '黄海琪', '冯振晖', '钟业豪', '陈炜裕', '陆烨', '欧楚怡', '曾梓宁', '杨锦城',
+            '谭焯文', '陈姻尹'
+        ];
+        let originalNames = [];
+        let remainingNames = [];
+        let intervalId;
+        let currentSpeed = 50; // 初始速度（毫秒）
+
+        // 使用 sessionStorage 保存数据，会话结束时自动清除
+        function loadData() {
+            const storedOriginal = sessionStorage.getItem('originalNames');
+            const storedRemaining = sessionStorage.getItem('remainingNames');
+
+            if (storedOriginal) {
+                originalNames = JSON.parse(storedOriginal);
+                remainingNames = storedRemaining ? JSON.parse(storedRemaining) : [...originalNames];
+            } else {
+                originalNames = [...builtinNames];
+                remainingNames = [...originalNames];
+                saveData();
+            }
+            updateDisplay('准备中...');
+        }
+
+        function saveData() {
+            sessionStorage.setItem('originalNames', JSON.stringify(originalNames));
+            sessionStorage.setItem('remainingNames', JSON.stringify(remainingNames));
+        }
+
+        function updateDisplay(text) {
+            document.getElementById('display').textContent = text;
+        }
+
+        function getRandomIndex(length) {
+            const array = new Uint32Array(1);
+            crypto.getRandomValues(array);
+            return array[0] % length;
+        }
+
+        function startLottery() {
+            if (isRunning) return;
+
+            if (remainingNames.length === 0) {
+                alert('所有名字已抽完！请重置。');
+                return;
+            }
+
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('result').textContent = '';
+            isRunning = true;
+            currentSpeed = 50;
+
+            // 预选最终赢家，使用真随机
+            const winnerIndex = getRandomIndex(remainingNames.length);
+            const winner = remainingNames[winnerIndex];
+
+            // 开始快速切换
+            intervalId = setInterval(() => {
+                const randomIndex = getRandomIndex(remainingNames.length);
+                updateDisplay(remainingNames[randomIndex]);
+            }, currentSpeed);
+
+            // 逐渐减速
+            let slowdownInterval = setInterval(() => {
+                currentSpeed += 50; // 每次增加50ms
+                clearInterval(intervalId);
+                if (currentSpeed > 500) {
+                    // 停下来
+                    clearInterval(slowdownInterval);
+                    updateDisplay(winner);
+                    document.getElementById('result').textContent = `中奖者：${winner} 🎉`;
+                    // 移除抽中的名字
+                    remainingNames.splice(winnerIndex, 1);
+                    saveData();
+                    isRunning = false;
+                    document.getElementById('startButton').disabled = false;
+                } else {
+                    // 继续切换，但速度变慢
+                    intervalId = setInterval(() => {
+                        const randomIndex = getRandomIndex(remainingNames.length);
+                        updateDisplay(remainingNames[randomIndex]);
+                    }, currentSpeed);
+                }
+            }, 500); // 每秒减速一次
+        }
+
+        function resetLottery() {
+            remainingNames = [...originalNames];
+            saveData();
+            document.getElementById('result').textContent = '';
+            updateDisplay('准备中...');
+            alert('已重置！');
+        }
+
+        // 加载数据
+        loadData();
+    </script>
+</body>
+</html>
