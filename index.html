@@ -72,7 +72,7 @@
 </head>
 <body>
     <h1>随机名字抽奖系统（无重复）</h1>
-    <p>点击开始，名字会快速随机切换，然后逐渐慢下来停在幸运儿上。抽中后移除，不会重复。</p>
+    <p>点击开始，名字会快速随机切换，然后逐渐慢下来停在幸运儿上。抽中后移除，不会重复。点击重置恢复原列表。关闭页面后自动重置。现在使用真随机，更公平！</p>
     <button id="startButton" onclick="startLottery()">开始抽奖</button>
     <button id="resetButton" onclick="resetLottery()">重置</button>
     <div id="display">准备中...</div>
@@ -81,18 +81,20 @@
     <script>
         let isRunning = false;
         const builtinNames = [
-            '欧诺焰', '王仙华', '黄宗毅', '陈治妍', '谢沛业', '陈家涛', '陈学成', '林宗泽', '江赞洋', '梁一芯',
-            '黄欣儿', '余应峻', '黎敏玲', '陈家俊', '邵泽滔', '钟有扬', '朱洛轩', '董李宗', '蓝海平',
-            '陈钰婧', '欧心怡', '李方晋', '霍颖怡', '梁宏', '陈俊安', '欧洁鸿', '陈翠婵', '谭皓天', '周煜轩',
-            '李祖源', '张子寅', '董晓', '许芷豪', '程学倪', '张子晴', '刘颖仪', '苏现', '曾庆航',
-            '曾明轩', '江沩健', '张俊然', '陈维渝', '陈家熙',  '龙惠敏', '陈勇达', '曾幸文', '雷智宇',
-            '陈国伦', '陈鸿玮', '黄海琪', '冯振晖', '钟业豪', '陈炜裕', '陆烨', '欧楚怡', '曾梓宁', '杨锦城',
-            '谭焯文', '陈姻尹'
+            '陈炜裕', '钟业豪', '曾幸文', '余应峻', '苏现', '江赞洋', '蓝海平', '黄宗毅', '李方晋', '陈维渝',
+            '黄欣儿', '陈家熙', '周煜轩', '李祖源', '杨锦城', '陈国伦', '刘颖仪', '霍颖怡', '梁宏-', '欧诺焰',
+            '董晓-', '朱洛轩', '董李宗', '梁一芯', '龙惠敏', '张俊然', '张子晴', '陈俊安', '曾明轩', '曾庆航',
+            '许芷豪', '欧心怡', '冯振晖', '欧楚怡', '黄海琪', '陈家俊', '陈翠婵', '陈鸿玮', '程学倪', '曾梓宁',
+            '黎敏玲', '江沩健', '陈家涛', '邵泽滔', '陈勇达', '欧洁鸿', '林宗泽', '王仙华', '陈治妍', '陈钰婧',
+            '谢沛业', '梁肇涛', '谭皓天', '谭焯文', '陆烨-', '陈姻尹', '钟有扬', '雷智宇', '张子寅', '陈学成',
+            
         ];
         let originalNames = [];
         let remainingNames = [];
         let intervalId;
-        let currentSpeed = 50; // 初始速度（毫秒）
+        let currentSpeed = 20; // 初始速度
+        let shuffledList = []; // 洗牌列表
+        let displayIndex = 0; // 当前显示索引
 
         // 使用 sessionStorage 保存数据，会话结束时自动清除
         function loadData() {
@@ -122,7 +124,17 @@
         function getRandomIndex(length) {
             const array = new Uint32Array(1);
             crypto.getRandomValues(array);
-            return array[0] % length;
+            return array[0] % length; // 切换回真随机
+        }
+
+        // Fisher-Yates shuffle 函数
+        function shuffle(array) {
+            let shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = getRandomIndex(i + 1);
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
         }
 
         function startLottery() {
@@ -136,40 +148,44 @@
             document.getElementById('startButton').disabled = true;
             document.getElementById('result').textContent = '';
             isRunning = true;
-            currentSpeed = 50;
+            currentSpeed = 20;
+            displayIndex = 0;
 
-            // 预选最终赢家，使用真随机
+            // 预选最终赢家
             const winnerIndex = getRandomIndex(remainingNames.length);
             const winner = remainingNames[winnerIndex];
 
-            // 开始快速切换
+            // 洗牌剩余名字
+            shuffledList = shuffle(remainingNames);
+
+            // 开始顺序切换洗牌列表
             intervalId = setInterval(() => {
-                const randomIndex = getRandomIndex(remainingNames.length);
-                updateDisplay(remainingNames[randomIndex]);
+                updateDisplay(shuffledList[displayIndex]);
+                displayIndex = (displayIndex + 1) % shuffledList.length;
             }, currentSpeed);
 
             // 逐渐减速
             let slowdownInterval = setInterval(() => {
-                currentSpeed += 50; // 每次增加50ms
+                currentSpeed += 100;
                 clearInterval(intervalId);
-                if (currentSpeed > 500) {
+                if (currentSpeed > 400) {
                     // 停下来
                     clearInterval(slowdownInterval);
                     updateDisplay(winner);
                     document.getElementById('result').textContent = `中奖者：${winner} 🎉`;
                     // 移除抽中的名字
-                    remainingNames.splice(winnerIndex, 1);
+                    remainingNames.splice(remainingNames.indexOf(winner), 1);
                     saveData();
                     isRunning = false;
                     document.getElementById('startButton').disabled = false;
                 } else {
                     // 继续切换，但速度变慢
                     intervalId = setInterval(() => {
-                        const randomIndex = getRandomIndex(remainingNames.length);
-                        updateDisplay(remainingNames[randomIndex]);
+                        updateDisplay(shuffledList[displayIndex]);
+                        displayIndex = (displayIndex + 1) % shuffledList.length;
                     }, currentSpeed);
                 }
-            }, 500); // 每秒减速一次
+            }, 500);
         }
 
         function resetLottery() {
