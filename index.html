@@ -163,7 +163,7 @@
         }, 500);
         // ====================================================================
 
-        // ==================== 倒计时核心逻辑（已修改） ====================
+        // 倒计时核心逻辑
         function initCountdown() {
             const targetDate = new Date('2026-06-30T00:00:00').getTime();
 
@@ -171,10 +171,9 @@
                 const now = new Date().getTime();
                 const distance = targetDate - now;
 
-                // 【核心改动】：如果时间超过了2026年6月30日
                 if (distance < 0) {
                     document.getElementById('countdown-container').textContent = "祝同学们中考顺利！✨";
-                    clearInterval(countdownInterval); // 停止倒计时刷新
+                    clearInterval(countdownInterval); 
                     return;
                 }
 
@@ -192,7 +191,6 @@
         }
         
         initCountdown();
-        // ====================================================================
 
         let isRunning = false;
         const builtinNames = [
@@ -201,14 +199,12 @@
             '董晓-', '朱洛轩', '董李宗', '梁一芯', '龙惠敏', '张俊然', '张子晴', '陈俊安', '曾明轩', '曾庆航',
             '许芷豪', '欧心怡', '冯振晖', '欧楚怡', '黄海琪', '陈家俊', '陈鸿玮', '程学倪', '曾梓宁',
             '黎敏玲', '江沩健', '陈家涛', '邵泽滔', '陈勇达', '欧洁鸿', '林宗泽', '王仙华', '陈治妍', '陈钰婧',
-            '谢沛业', '梁肇涛', '谭皓天', '谭焯文', '陆烨-', '陈姻尹', '钟有扬', '雷智宇', '张子寅', '陈学成', '--再来一次--'
+            '谢沛业', '梁肇涛', '谭皓天', '谭焯文', '陆烨-', '陈姻尹', '钟有扬', '雷智宇', '张子寅', '陈学成', '再来一次'
         ];
         let originalNames = [];
         let remainingNames = [];
-        let intervalId;
-        let currentSpeed = 20; 
-        let shuffledList = []; 
-        let displayIndex = 0; 
+        let currentSpeed = 30; // 初始高频闪烁速度（毫秒）
+        let timeoutId;
 
         function loadData() {
             try {
@@ -252,15 +248,7 @@
             }
         }
 
-        function shuffle(array) {
-            let shuffled = [...array];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = getRandomIndex(i + 1);
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled;
-        }
-
+        // ==================== 全新重写的丝滑随机抽奖算法 ====================
         function startLottery() {
             if (isRunning) return;
 
@@ -272,39 +260,41 @@
             document.getElementById('startButton').disabled = true;
             document.getElementById('result').textContent = '';
             isRunning = true;
-            currentSpeed = 20;
-            displayIndex = 0;
+            currentSpeed = 30; // 恢复初始极速闪烁
 
-            const winnerIndex = getRandomIndex(remainingNames.length);
-            const winner = remainingNames[winnerIndex];
-            shuffledList = shuffle(remainingNames);
+            // 递归滚屏函数
+            function roll() {
+                // 每一帧都实时真随机抓取一个名字，绝不走固定循环
+                const randomIndex = getRandomIndex(remainingNames.length);
+                const currentName = remainingNames[randomIndex];
+                updateDisplay(currentName);
 
-            intervalId = setInterval(() => {
-                updateDisplay(shuffledList[displayIndex]);
-                displayIndex = (displayIndex + 1) % shuffledList.length;
-            }, currentSpeed);
-
-            let slowdownInterval = setInterval(() => {
-                currentSpeed += 100;
-                clearInterval(intervalId);
-                if (currentSpeed > 400) {
-                    clearInterval(slowdownInterval);
-                    updateDisplay(winner);
+                // 判断是否继续减速滚动
+                if (currentSpeed < 380) {
+                    // 指数式平滑减速：前期减速慢显得激进，后期减速快显得充满悬念
+                    currentSpeed += Math.floor(currentSpeed * 0.15) + 5; 
+                    timeoutId = setTimeout(roll, currentSpeed);
+                } else {
+                    // 【自然停靠】：动画变到最慢时，当前显示的是谁，谁就是最终赢家！
+                    const winner = currentName;
                     document.getElementById('result').textContent = `中奖者：${winner} 🎉`;
+                    
+                    // 从剩余名单中真正剔除
                     remainingNames.splice(remainingNames.indexOf(winner), 1);
                     saveData();
+                    
                     isRunning = false;
                     document.getElementById('startButton').disabled = false;
-                } else {
-                    intervalId = setInterval(() => {
-                        updateDisplay(shuffledList[displayIndex]);
-                        displayIndex = (displayIndex + 1) % shuffledList.length;
-                    }, currentSpeed);
                 }
-            }, 500);
+            }
+
+            // 启动第一棒闪烁
+            timeoutId = setTimeout(roll, currentSpeed);
         }
+        // ====================================================================
 
         function resetLottery() {
+            if (isRunning) return;
             remainingNames = [...originalNames];
             saveData();
             document.getElementById('result').textContent = '';
