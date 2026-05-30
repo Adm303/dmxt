@@ -11,7 +11,9 @@
             margin: 50px;
             background-color: #f4f7f9;
             color: #333;
-            position: relative; /* 新增：便于右上角管理按钮绝对定位 */
+            position: relative; 
+            user-select: none;
+            -webkit-user-select: none;
         }
         h1 {
             color: #4a90e2;
@@ -23,6 +25,20 @@
             margin-bottom: 30px;
             color: #555;
         }
+        
+        #countdown-container {
+            font-size: 1.2em;
+            color: #e94e77; 
+            font-weight: bold;
+            background-color: #fff;
+            padding: 12px 25px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            letter-spacing: 0.5px;
+        }
+
         #display {
             font-size: 48px;
             font-weight: bold;
@@ -59,21 +75,18 @@
             cursor: not-allowed;
         }
 
-        /* 新增：右上角管理按钮样式（带用户图标） */
         .admin-btn {
             position: absolute;
-            top: -20px; /* 抵消body的margin，使其靠顶 */
+            top: -20px; 
             right: 0px;
             padding: 10px 18px;
             font-size: 15px;
             background-color: #4a90e2;
             color: white;
-            text-decoration: none; /* 去掉超链接下划线 */
+            text-decoration: none; 
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             transition: background-color 0.3s, transform 0.2s;
-            
-            /* Flex布局让图标与文字完美居中对齐 */
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -82,12 +95,11 @@
             background-color: #357abd;
             transform: translateY(-2px);
         }
-        /* 用户图标样式 */
         .admin-icon {
             width: 18px;
             height: 18px;
             margin-right: 6px;
-            fill: currentColor; /* 让图标颜色自动跟随文字颜色（纯白） */
+            fill: currentColor; 
         }
 
         #result {
@@ -115,12 +127,73 @@
 
     <h1>随机名字抽奖系统（无重复）</h1>
     <p>海内存知己,天涯若比邻?</p>
+    
+    <div id="countdown-container">距离 6月30日 还有：加载中...</div>
+    <br>
+
     <button id="startButton" onclick="startLottery()">开始抽奖</button>
     <button id="resetButton" onclick="resetLottery()">重置</button>
     <div id="display">准备中...</div>
     <div id="result"></div>
 
     <script>
+        // ==================== 静态防扒核心逻辑 ====================
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        document.addEventListener('keydown', function(e) {
+            if (
+                e.key === 'F12' || 
+                (e.ctrlKey && e.key.toLowerCase() === 'u') || 
+                (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i') ||
+                (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') ||
+                (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'j')
+            ) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        setInterval(function() {
+            const startTime = new Date().getTime();
+            debugger; 
+            const endTime = new Date().getTime();
+            if (endTime - startTime > 1000) { 
+                window.location.href = 'about:blank'; 
+            }
+        }, 500);
+        // ====================================================================
+
+        // ==================== 倒计时核心逻辑（已修改） ====================
+        function initCountdown() {
+            const targetDate = new Date('2026-06-30T00:00:00').getTime();
+
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const distance = targetDate - now;
+
+                // 【核心改动】：如果时间超过了2026年6月30日
+                if (distance < 0) {
+                    document.getElementById('countdown-container').textContent = "祝同学们中考顺利！✨";
+                    clearInterval(countdownInterval); // 停止倒计时刷新
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById('countdown-container').textContent = 
+                    `距离 6月30日 还有：${days}天 ${hours.toString().padStart(2, '0')}时 ${minutes.toString().padStart(2, '0')}分 ${seconds.toString().padStart(2, '0')}秒`;
+            }
+
+            updateCountdown();
+            const countdownInterval = setInterval(updateCountdown, 1000);
+        }
+        
+        initCountdown();
+        // ====================================================================
+
         let isRunning = false;
         const builtinNames = [
             '陈炜裕', '钟业豪', '曾幸文', '余应峻', '苏现', '江赞洋', '蓝海平', '黄宗毅', '李方晋', '陈维渝',
@@ -129,34 +202,40 @@
             '许芷豪', '欧心怡', '冯振晖', '欧楚怡', '黄海琪', '陈家俊', '陈鸿玮', '程学倪', '曾梓宁',
             '黎敏玲', '江沩健', '陈家涛', '邵泽滔', '陈勇达', '欧洁鸿', '林宗泽', '王仙华', '陈治妍', '陈钰婧',
             '谢沛业', '梁肇涛', '谭皓天', '谭焯文', '陆烨-', '陈姻尹', '钟有扬', '雷智宇', '张子寅', '陈学成', '---'
-            
         ];
         let originalNames = [];
         let remainingNames = [];
         let intervalId;
-        let currentSpeed = 20; // 初始速度
-        let shuffledList = []; // 洗牌列表
-        let displayIndex = 0; // 当前显示索引
+        let currentSpeed = 20; 
+        let shuffledList = []; 
+        let displayIndex = 0; 
 
-        // 使用 sessionStorage 保存数据，会话结束时自动清除
         function loadData() {
-            const storedOriginal = sessionStorage.getItem('originalNames');
-            const storedRemaining = sessionStorage.getItem('remainingNames');
+            try {
+                const storedOriginal = sessionStorage.getItem('originalNames');
+                const storedRemaining = sessionStorage.getItem('remainingNames');
 
-            if (storedOriginal) {
-                originalNames = JSON.parse(storedOriginal);
-                remainingNames = storedRemaining ? JSON.parse(storedRemaining) : [...originalNames];
-            } else {
+                if (storedOriginal) {
+                    originalNames = JSON.parse(storedOriginal);
+                    remainingNames = storedRemaining ? JSON.parse(storedRemaining) : [...originalNames];
+                } else {
+                    originalNames = [...builtinNames];
+                    remainingNames = [...originalNames];
+                    saveData();
+                }
+            } catch (e) {
+                console.warn("存储不可用，已切换到纯本地数组模式运行");
                 originalNames = [...builtinNames];
                 remainingNames = [...originalNames];
-                saveData();
             }
             updateDisplay('准备中...');
         }
 
         function saveData() {
-            sessionStorage.setItem('originalNames', JSON.stringify(originalNames));
-            sessionStorage.setItem('remainingNames', JSON.stringify(remainingNames));
+            try {
+                sessionStorage.setItem('originalNames', JSON.stringify(originalNames));
+                sessionStorage.setItem('remainingNames', JSON.stringify(remainingNames));
+            } catch (e) {}
         }
 
         function updateDisplay(text) {
@@ -164,12 +243,15 @@
         }
 
         function getRandomIndex(length) {
-            const array = new Uint32Array(1);
-            crypto.getRandomValues(array);
-            return array[0] % length; // 切换回真随机
+            try {
+                const array = new Uint32Array(1);
+                window.crypto.getRandomValues(array);
+                return array[0] % length; 
+            } catch (e) {
+                return Math.floor(Math.random() * length);
+            }
         }
 
-        // Fisher-Yates shuffle 函数
         function shuffle(array) {
             let shuffled = [...array];
             for (let i = shuffled.length - 1; i > 0; i--) {
@@ -193,35 +275,27 @@
             currentSpeed = 20;
             displayIndex = 0;
 
-            // 预选最终赢家
             const winnerIndex = getRandomIndex(remainingNames.length);
             const winner = remainingNames[winnerIndex];
-
-            // 洗牌剩余名字
             shuffledList = shuffle(remainingNames);
 
-            // 开始顺序切换洗牌列表
             intervalId = setInterval(() => {
                 updateDisplay(shuffledList[displayIndex]);
                 displayIndex = (displayIndex + 1) % shuffledList.length;
             }, currentSpeed);
 
-            // 逐渐减速
             let slowdownInterval = setInterval(() => {
                 currentSpeed += 100;
                 clearInterval(intervalId);
                 if (currentSpeed > 400) {
-                    // 停下来
                     clearInterval(slowdownInterval);
                     updateDisplay(winner);
                     document.getElementById('result').textContent = `中奖者：${winner} 🎉`;
-                    // 移除抽中的名字
                     remainingNames.splice(remainingNames.indexOf(winner), 1);
                     saveData();
                     isRunning = false;
                     document.getElementById('startButton').disabled = false;
                 } else {
-                    // 继续切换，但速度变慢
                     intervalId = setInterval(() => {
                         updateDisplay(shuffledList[displayIndex]);
                         displayIndex = (displayIndex + 1) % shuffledList.length;
@@ -238,7 +312,6 @@
             alert('已重置！');
         }
 
-        // 加载数据
         loadData();
     </script>
 </body>
